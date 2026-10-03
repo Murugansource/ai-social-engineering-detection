@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Based Social Engineering Attack Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyberBg: '#060913',
+                        cyberCard: 'rgba(15, 23, 42, 0.75)',
+                        cyberBorder: 'rgba(0, 240, 255, 0.2)',
+                        neonCyan: '#00F0FF',
+                        neonPurple: '#7000FF',
+                        neonRed: '#FF2E93',
+                        neonGreen: '#00FF88'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Segoe UI', 'sans-serif'],
+                        mono: ['Fira Code', 'Courier New', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;600;700;800&display=swap');
+
+        body {
+            background-color: #060913;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism Effect */
+        .glass-panel {
+            background: rgba(13, 20, 36, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 240, 255, 0.18);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-card {
+            background: rgba(18, 28, 51, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(0, 240, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Neon Glow Utility */
+        .glow-cyan {
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.6), 0 0 20px rgba(0, 240, 255, 0.3);
+        }
+        .box-glow-cyan {
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.3);
+        }
+        .box-glow-purple {
+            box-shadow: 0 0 25px rgba(112, 0, 255, 0.35);
+        }
+
+        /* 3D Tilt Wrapper Container */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+
+        /* Floating Animation */
+        @keyframes float3D {
+            0%, 100% {
+                transform: translateY(0px) rotateX(10deg) rotateY(-10deg) rotateZ(0deg);
+            }
+            50% {
+                transform: translateY(-15px) rotateX(15deg) rotateY(10deg) rotateZ(3deg);
+            }
+        }
+
+        .animate-float-3d {
+            animation: float3D 7s ease-in-out infinite;
+            transform-style: preserve-3d;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+
+        .cyber-pulse {
+            animation: pulseGlow 4s ease-in-out infinite;
+        }
+
+        /* Grid Background Pattern */
+        .bg-cyber-grid {
+            background-image: linear-gradient(to right, rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #060913;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00F0FF;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-cyber-grid flex flex-col relative antialiased selection:bg-cyan-500 selection:text-black">
+
+    <canvas id="particleCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
+    <!-- Top Alert Notification Bar -->
+    <div id="toastNotification" class="fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 ease-in-out glass-panel border-l-4 border-cyan-400 p-4 rounded-r-lg shadow-2xl max-w-md hidden">
+        <div class="flex items-center gap-3">
+            <i id="toastIcon" class="fa-solid fa-circle-check text-cyan-400 text-xl"></i>
+            <div>
+                <h4 id="toastTitle" class="font-bold text-white text-sm">System Alert</h4>
+                <p id="toastMessage" class="text-xs text-slate-300">Operation completed successfully.</p>
+            </div>
+            <button onclick="closeToast()" class="ml-auto text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div class="relative z-10 flex flex-col min-h-screen">
+
+        <!-- Navigation Header (Visible after login) -->
+        <header id="mainNav" class="hidden glass-panel border-b border-cyan-500/20 sticky top-0 z-40 transition-all duration-300">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <!-- Brand / Logo -->
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('dashboard')">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                            <i class="fa-solid fa-shield-halved text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <span class="font-extrabold text-lg tracking-wider bg-gradient-to-r from-cyan-400 via-teal-200 to-purple-400 bg-clip-text text-transparent">CYBER<span class="text-cyan-400">GUARD</span></span>
+                            <span class="hidden sm:inline-block text-[10px] block font-mono text-cyan-400/70 tracking-widest uppercase">AI Social Engineering Detector</span>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Links -->
+                    <nav class="hidden md:flex items-center space-x-1">
+                        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn px-4 py-2 rounded-lg text-sm font-semibold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 flex items-center gap-2 transition">
+                            <i class="fa-solid fa-chart-pie"></i> Dashboard
+                        </button>
+                        <button onclick="switchTab('analyze')" id="nav-analyze" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/50 flex items-center gap-2 transition">
+                            <i class="fa-solid fa-microchip"></i> Scan Message
+                        </button>
+                        <button onclick="switchTab('history')" id="nav-history" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/50 flex items-center gap-2 transition">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Threat Audit History
+                        </button>
+                    </nav>
+
+                    <!-- User Profile & Logout -->
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-3 px-3 py-1.5 rounded-full bg-slate-900/60 border border-slate-800">
+                            <div class="w-7 h-7 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs border border-cyan-500/40">
+                                <i class="fa-solid fa-user-shield"></i>
+                            </div>
+                            <span id="currentUserDisplay" class="text-xs font-mono text-slate-200 font-medium">SecOps_Admin</span>
+                        </div>
+                        <button onclick="handleLogout()" class="text-slate-400 hover:text-red-400 p-2 rounded-lg transition" title="Logout">
+                            <i class="fa-solid fa-right-from-bracket text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- VIEW 1: AUTHENTICATION (LOGIN & REGISTRATION PAGE) -->
+        <main id="view-auth" class="flex-grow flex items-center justify-center p-4 sm:p-6 lg:p-8">
+            <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                
+                <!-- Left 3D Visual Decorative Section -->
+                <div class="lg:col-span-6 flex flex-col items-center text-center lg:text-left perspective-1000">
+                    <!-- Interactive 3D Card / Emblem -->
+                    <div id="tiltCard" class="w-72 h-72 sm:w-80 sm:h-80 relative rounded-3xl glass-panel border border-cyan-500/30 flex items-center justify-center mb-6 animate-float-3d box-glow-cyan transition-transform duration-100 ease-out cursor-pointer">
+                        <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-cyan-500/10 via-purple-600/10 to-transparent pointer-events-none"></div>
+                        <div class="absolute -top-6 -left-6 w-20 h-20 bg-cyan-500/20 rounded-full blur-xl"></div>
+                        <div class="absolute -bottom-6 -right-6 w-20 h-20 bg-purple-500/20 rounded-full blur-xl"></div>
+
+                        <!-- Concentric Glowing Cyber Rings -->
+                        <div class="w-56 h-56 rounded-full border border-dashed border-cyan-400/40 flex items-center justify-center animate-spin" style="animation-duration: 25s;">
+                            <div class="w-44 h-44 rounded-full border border-cyan-500/30 flex items-center justify-center animate-spin" style="animation-duration: 15s; animation-direction: reverse;"></div>
+                        </div>
+
+                        <!-- Central Holographic 3D Shield Icon -->
+                        <div class="absolute flex flex-col items-center">
+                            <div class="relative">
+                                <i class="fa-solid fa-shield-virus text-7xl sm:text-8xl bg-gradient-to-b from-cyan-300 via-cyan-400 to-purple-600 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(0,240,255,0.8)]"></i>
+                                <i class="fa-solid fa-lock absolute inset-0 flex items-center justify-center text-2xl text-cyan-200 mt-2"></i>
+                            </div>
+                            <span class="mt-4 text-xs font-mono tracking-widest text-cyan-300/80 bg-cyan-950/60 px-3 py-1 rounded-full border border-cyan-500/30">AI GUARD ACTIVE v4.2</span>
+                        </div>
+                    </div>
+
+                    <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                        AI Social Engineering <br><span class="bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">Attack Detection System</span>
+                    </h1>
+                    <p class="mt-3 text-slate-400 text-sm max-w-md leading-relaxed">
+                        Real-time threat engine utilizing Deep NLP models to identify Phishing, Business Email Compromise, Smishing & Suspicious Forensics with 99.4% precision.
+                    </p>
+
+                    <div class="mt-6 flex flex-wrap gap-4 justify-center lg:justify-start text-xs text-slate-400 font-mono">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-check text-cyan-400"></i> Zero-Day Phishing</span>
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-check text-cyan-400"></i> Sender IP Trace</span>
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-check text-cyan-400"></i> NLP Urgency Check</span>
+                    </div>
+                </div>
+
+                <!-- Right Authentication Form Panel -->
+                <div class="lg:col-span-6 w-full max-w-md mx-auto">
+                    <div class="glass-panel p-8 rounded-3xl border border-cyan-500/30 shadow-2xl relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-bl-full pointer-events-none"></div>
+
+                        <!-- Form Header Tabs -->
+                        <div class="flex items-center justify-between mb-8 border-b border-slate-800 pb-4">
+                            <button id="tab-login-btn" onclick="toggleAuthForm('login')" class="text-lg font-bold text-cyan-400 border-b-2 border-cyan-400 pb-1 transition">
+                                <i class="fa-solid fa-lock text-sm mr-2"></i>Secure Login
+                            </button>
+                            <button id="tab-register-btn" onclick="toggleAuthForm('register')" class="text-lg font-bold text-slate-500 hover:text-slate-300 pb-1 transition">
+                                <i class="fa-solid fa-user-plus text-sm mr-2"></i>Register Agent
+                            </button>
+                        </div>
+
+                        <!-- LOGIN FORM -->
+                        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-5">
+                            <div>
+                                <label class="block text-xs font-mono text-cyan-300 mb-2 uppercase tracking-wider">Security Key / User ID</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                                        <i class="fa-solid fa-user-shield"></i>
+                                    </div>
+                                    <input type="text" id="loginUser" required value="secops_admin" class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition" placeholder="Enter username or ID">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-mono text-cyan-300 mb-2 uppercase tracking-wider">Passcode Key</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                                        <i class="fa-solid fa-key"></i>
+                                    </div>
+                                    <input type="password" id="loginPass" required value="cyberpass123" class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition" placeholder="••••••••••••">
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between text-xs">
+                                <label class="flex items-center text-slate-400 cursor-pointer">
+                                    <input type="checkbox" checked class="rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-400 h-4 w-4">
+                                    <span class="ml-2">Remember credentials</span>
+                                </label>
+                                <a href="#" onclick="showToast('Information', 'Demo Master Key: secops_admin / cyberpass123', 'info')" class="text-cyan-400 hover:underline">Forgot Key?</a>
+                            </div>
+
+                            <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 via-teal-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-slate-950 font-extrabold text-sm tracking-wider uppercase transition transform active:scale-95 shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2">
+                                <span>Authenticate Agent</span>
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </form>
+
+                        <!-- REGISTER FORM (Hidden by default) -->
+                        <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-5 hidden">
+                            <div>
+                                <label class="block text-xs font-mono text-cyan-300 mb-2 uppercase tracking-wider">Agent Full Name</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                                        <i class="fa-solid fa-user"></i>
+                                    </div>
+                                    <input type="text" id="regName" required class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition" placeholder="e.g. Alex Mercer">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-mono text-cyan-300 mb-2 uppercase tracking-wider">Corporate Security Email</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                                        <i class="fa-solid fa-envelope"></i>
+                                    </div>
+                                    <input type="email" id="regEmail" required class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition" placeholder="alex@cyberguard.sec">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-mono text-cyan-300 mb-2 uppercase tracking-wider">New Cyber Key</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                                        <i class="fa-solid fa-shield-cat"></i>
+                                    </div>
+                                    <input type="password" id="regPass" required class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition" placeholder="Minimum 8 characters">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white font-extrabold text-sm tracking-wider uppercase transition transform active:scale-95 shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2">
+                                <span>Create Security Profile</span>
+                                <i class="fa-solid fa-user-shield"></i>
+                            </button>
+                        </form>
+
+                        <div class="mt-6 text-center border-t border-slate-800/80 pt-4">
+                            <span class="text-[11px] font-mono text-slate-500">Secured with Quantum 256-Bit TLS Encryption</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <!-- VIEW 2: DASHBOARD VIEW -->
+        <main id="view-dashboard" class="hidden flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+            
+            <!-- Welcome Header -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-6 rounded-2xl border-l-4 border-l-cyan-400">
+                <div>
+                    <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                        Security Control Center <span class="text-xs px-2.5 py-1 bg-cyan-500/10 text-cyan-400 rounded-full border border-cyan-500/30 font-mono">LIVE AI ENGINE</span>
+                    </h2>
+                    <p class="text-slate-400 text-sm mt-1">Real-time telemetry and social engineering threat monitoring feed.</p>
+                </div>
+                <button onclick="switchTab('analyze')" class="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 flex items-center gap-2 transition self-start md:self-auto">
+                    <i class="fa-solid fa-bolt"></i> New Threat Scan
+                </button>
+            </div>
+
+            <!-- Stats Metric Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div class="glass-card p-5 rounded-2xl">
+                    <div class="flex items-center justify-between text-slate-400 mb-3">
+                        <span class="text-xs font-mono uppercase tracking-wider">Total Messages Scanned</span>
+                        <i class="fa-solid fa-cubes text-cyan-400 text-lg"></i>
+                    </div>
+                    <div class="text-3xl font-extrabold text-white font-mono" id="stat-total">1,284</div>
+                    <div class="mt-2 text-xs text-emerald-400 flex items-center gap-1">
+                        <i class="fa-solid fa-arrow-trend-up"></i> +14.2% from last week
+                    </div>
+                </div>
+
+                <div class="glass-card p-5 rounded-2xl">
+                    <div class="flex items-center justify-between text-slate-400 mb-3">
+                        <span class="text-xs font-mono uppercase tracking-wider">Threats Detected</span>
+                        <i class="fa-solid fa-bug text-pink-500 text-lg"></i>
+                    </div>
+                    <div class="text-3xl font-extrabold text-pink-500 font-mono" id="stat-threats">342</div>
+                    <div class="mt-2 text-xs text-pink-400 flex items-center gap-1">
+                        <i class="fa-solid fa-triangle-exclamation"></i> 26.6% Attack Ratio
+                    </div>
+                </div>
+
+                <div class="glass-card p-5 rounded-2xl">
+                    <div class="flex items-center justify-between text-slate-400 mb-3">
+                        <span class="text-xs font-mono uppercase tracking-wider">Verified Legitimate</span>
+                        <i class="fa-solid fa-shield-check text-emerald-400 text-lg"></i>
+                    </div>
+                    <div class="text-3xl font-extrabold text-emerald-400 font-mono" id="stat-safe">942</div>
+                    <div class="mt-2 text-xs text-slate-400">
+                        Zero false negatives reported
+                    </div>
+                </div>
+
+                <div class="glass-card p-5 rounded-2xl">
+                    <div class="flex items-center justify-between text-slate-400 mb-3">
+                        <span class="text-xs font-mono uppercase tracking-wider">AI Model Accuracy</span>
+                        <i class="fa-solid fa-brain text-purple-400 text-lg"></i>
+                    </div>
+                    <div class="text-3xl font-extrabold text-purple-400 font-mono">99.42%</div>
+                    <div class="mt-2 text-xs text-purple-300">
+                        BERT-Cyber XL Fine-tuned
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Daily Scan Trends Line Chart -->
+                <div class="lg:col-span-8 glass-panel p-6 rounded-2xl border border-slate-800">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-bold text-white text-base flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-cyan-400"></i> Scan Activity & Threat Detection Timeline
+                        </h3>
+                        <span class="text-xs text-slate-400 font-mono">7-Day Trend</span>
+                    </div>
+
+                    <!-- Interactive SVG Custom Line Chart -->
+                    <div class="w-full h-64 relative">
+                        <svg class="w-full h-full overflow-visible" viewBox="0 0 500 200">
+                            <!-- Background Grid Lines -->
+                            <line x1="0" y1="40" x2="500" y2="40" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4" />
+                            <line x1="0" y1="90" x2="500" y2="90" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4" />
+                            <line x1="0" y1="140" x2="500" y2="140" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4" />
+
+                            <!-- Gradient Definitions -->
+                            <defs>
+                                <linearGradient id="cyanGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#00F0FF" stop-opacity="0.4"/>
+                                    <stop offset="100%" stop-color="#00F0FF" stop-opacity="0.0"/>
+                                </linearGradient>
+                                <linearGradient id="pinkGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#FF2E93" stop-opacity="0.4"/>
+                                    <stop offset="100%" stop-color="#FF2E93" stop-opacity="0.0"/>
+                                </linearGradient>
+                            </defs>
+
+                            <!-- Area Fills -->
+                            <polygon points="0,180 0,110 80,80 160,130 240,60 320,95 400,45 500,75 500,180" fill="url(#cyanGrad)" />
+                            <polygon points="0,180 0,150 80,140 160,165 240,120 320,130 400,100 500,125 500,180" fill="url(#pinkGrad)" />
+
+                            <!-- Total Scans Line (Cyan) -->
+                            <path d="M 0,110 Q 40,95 80,80 T 160,130 T 240,60 T 320,95 T 400,45 T 500,75" fill="none" stroke="#00F0FF" stroke-width="3" />
+                            
+                            <!-- Threats Line (Pink) -->
+                            <path d="M 0,150 Q 40,145 80,140 T 160,165 T 240,120 T 320,130 T 400,100 T 500,125" fill="none" stroke="#FF2E93" stroke-width="2.5" stroke-dasharray="2" />
+
+                            <!-- Data Points -->
+                            <circle cx="80" cy="80" r="4" fill="#00F0FF" />
+                            <circle cx="240" cy="60" r="4" fill="#00F0FF" />
+                            <circle cx="400" cy="45" r="4" fill="#00F0FF" />
+
+                            <circle cx="240" cy="120" r="4" fill="#FF2E93" />
+                            <circle cx="400" cy="100" r="4" fill="#FF2E93" />
+                        </svg>
+                    </div>
+
+                    <div class="flex items-center justify-center gap-8 mt-4 text-xs font-mono">
+                        <span class="flex items-center gap-2 text-cyan-400">
+                            <span class="w-3 h-3 rounded-full bg-cyan-400"></span> Total Scans
+                        </span>
+                        <span class="flex items-center gap-2 text-pink-400">
+                            <span class="w-3 h-3 rounded-full bg-pink-500"></span> Social Engineering Attacks
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Threat Breakdown Donut Chart -->
+                <div class="lg:col-span-4 glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                    <h3 class="font-bold text-white text-base flex items-center gap-2 mb-4">
+                        <i class="fa-solid fa-pie-chart text-purple-400"></i> Threat Classification
+                    </h3>
+
+                    <!-- SVG Donut Chart -->
+                    <div class="relative flex items-center justify-center my-4">
+                        <svg class="w-48 h-48 transform -rotate-90">
+                            <!-- Background Circle -->
+                            <circle cx="96" cy="96" r="70" stroke="#1e293b" stroke-width="20" fill="transparent" />
+                            <!-- Phishing (Cyan) -->
+                            <circle cx="96" cy="96" r="70" stroke="#00F0FF" stroke-width="20" fill="transparent"
+                                stroke-dasharray="440" stroke-dashoffset="170" />
+                            <!-- Banking Scam (Purple) -->
+                            <circle cx="96" cy="96" r="70" stroke="#7000FF" stroke-width="20" fill="transparent"
+                                stroke-dasharray="440" stroke-dashoffset="330" />
+                            <!-- Impersonation (Pink) -->
+                            <circle cx="96" cy="96" r="70" stroke="#FF2E93" stroke-width="20" fill="transparent"
+                                stroke-dasharray="440" stroke-dashoffset="390" />
+                        </svg>
+
+                        <div class="absolute text-center">
+                            <span class="block text-2xl font-extrabold text-white font-mono">342</span>
+                            <span class="text-[10px] uppercase font-mono text-slate-400">Total Attacks</span>
+                        </div>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="space-y-2 text-xs font-mono">
+                        <div class="flex items-center justify-between">
+                            <span class="flex items-center gap-2 text-cyan-300"><span class="w-2.5 h-2.5 rounded bg-cyan-400"></span> Phishing Mail</span>
+                            <span class="text-white font-bold">58%</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="flex items-center gap-2 text-purple-300"><span class="w-2.5 h-2.5 rounded bg-purple-600"></span> Banking Scam</span>
+                            <span class="text-white font-bold">28%</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="flex items-center gap-2 text-pink-300"><span class="w-2.5 h-2.5 rounded bg-pink-500"></span> Impersonation</span>
+                            <span class="text-white font-bold">14%</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <!-- VIEW 3: ANALYZE MESSAGE / EMAIL VIEW -->
+        <main id="view-analyze" class="hidden flex-grow max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+            <div class="glass-panel p-8 rounded-3xl border border-cyan-500/30">
+                
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass-chart text-cyan-400"></i>
+                            Analyze Suspicious Message / Email Content
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">Paste suspicious text or select a preset sample to test real-time AI forensics.</p>
+                    </div>
+                </div>
+
+                <!-- Preset Quick Buttons -->
+                <div class="mb-6">
+                    <label class="block text-xs font-mono text-cyan-300 mb-2 uppercase tracking-wider">Load Quick Presets:</label>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="loadPreset('phishing')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-cyan-500/20 hover:border-cyan-400 border border-slate-700 text-xs text-slate-200 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-envelope text-pink-400"></i> Urgent Phishing Email
+                        </button>
+                        <button onclick="loadPreset('bank')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-cyan-500/20 hover:border-cyan-400 border border-slate-700 text-xs text-slate-200 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-building-columns text-yellow-400"></i> Banking Alert Scam
+                        </button>
+                        <button onclick="loadPreset('legit')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-cyan-500/20 hover:border-cyan-400 border border-slate-700 text-xs text-slate-200 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-shield-check text-emerald-400"></i> Legit OTP Message
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Input Textarea -->
+                <div class="mb-6">
+                    <label class="block text-xs font-mono text-cyan-300 mb-2 uppercase tracking-wider">Raw Message / Email Header & Body</label>
+                    <textarea id="messageInput" rows="6" class="w-full p-4 rounded-2xl bg-slate-900/90 border border-slate-700 text-slate-100 placeholder-slate-500 text-sm font-mono focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition" placeholder="Paste suspicious SMS, WhatsApp, Email content or headers here..."></textarea>
+                </div>
+
+                <!-- Scan Trigger Button -->
+                <button onclick="runAIScan()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-400 to-purple-600 hover:opacity-95 text-slate-950 font-black text-base uppercase tracking-wider transition shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+                    <span>Execute AI Forensics Scan</span>
+                </button>
+
+            </div>
+
+            <!-- Scanning Progress Overlay Animation (Hidden by default) -->
+            <div id="scanProgressBox" class="hidden glass-panel p-8 rounded-3xl border border-cyan-400 text-center space-y-6 animate-pulse">
+                <div class="flex items-center justify-center gap-4">
+                    <div class="w-12 h-12 rounded-full border-4 border-cyan-400 border-t-transparent animate-spin"></div>
+                    <div class="text-left">
+                        <h4 class="text-lg font-bold text-white">AI Neural Network Analyzing Content...</h4>
+                        <p id="scanStepText" class="text-xs font-mono text-cyan-400">Step 1: Parsing NLP Linguistic Urgency Tokens...</p>
+                    </div>
+                </div>
+                <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div id="scanProgressBar" class="bg-cyan-400 h-full w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- VIEW 4: DETAILED SCAN RESULT VIEW -->
+            <div id="analysisResult" class="hidden space-y-6">
+                <!-- Status Banner -->
+                <div id="resultBanner" class="p-6 rounded-3xl border flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div class="flex items-center gap-4">
+                        <div id="resultIconBox" class="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl">
+                            <i id="resultIcon" class="fa-solid fa-circle-exclamation"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-3">
+                                <h3 id="resultStatus" class="text-2xl font-black text-white">HIGH RISK ATTACK DETECTED</h3>
+                                <span id="resultCategory" class="px-3 py-1 rounded-full text-xs font-mono uppercase font-bold bg-red-500/20 text-red-400 border border-red-500/30">Phishing Scam</span>
+                            </div>
+                            <p id="resultSummary" class="text-sm text-slate-300 mt-1">This message exhibits heavy urgency pressure, suspicious domain spoofing, and credentials harvesting intent.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center md:text-right border-t md:border-t-0 md:border-l border-slate-700/60 pt-4 md:pt-0 md:pl-6 w-full md:w-auto">
+                        <span class="block text-xs font-mono text-slate-400 uppercase">AI Threat Confidence</span>
+                        <span id="resultScore" class="text-4xl font-extrabold font-mono text-red-400">98.4%</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    
+                    <!-- Sender Forensics & Geolocation Trace -->
+                    <div class="lg:col-span-7 glass-panel p-6 rounded-3xl space-y-5">
+                        <h4 class="font-bold text-white text-base flex items-center gap-2 border-b border-slate-800 pb-3">
+                            <i class="fa-solid fa-location-crosshairs text-cyan-400"></i> Sender Forensics & Origin Location Trace
+                        </h4>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+                            <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800">
+                                <span class="text-slate-400 block mb-1">Extracted Sender Name</span>
+                                <span id="forensicSender" class="text-cyan-300 font-bold text-sm">Customer Support Urgent</span>
+                            </div>
+                            <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800">
+                                <span class="text-slate-400 block mb-1">Traced IP Address</span>
+                                <span id="forensicIP" class="text-pink-400 font-bold text-sm">185.220.101.5 (TOR Exit)</span>
+                            </div>
+                            <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800">
+                                <span class="text-slate-400 block mb-1">Associated Mobile/Phone</span>
+                                <span id="forensicPhone" class="text-slate-200 font-bold text-sm">+1 (800) 492-0199</span>
+                            </div>
+                            <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800">
+                                <span class="text-slate-400 block mb-1">Geo-Location Precision</span>
+                                <span id="forensicAccuracy" class="text-emerald-400 font-bold text-sm">96.4% Accuracy</span>
+                            </div>
+                        </div>
+
+                        <!-- Simulated Interactive Map Tracer UI -->
+                        <div class="relative h-44 rounded-2xl bg-slate-950 border border-cyan-500/20 overflow-hidden flex items-center justify-center">
+                            <!-- Background Map Grid Graphic -->
+                            <div class="absolute inset-0 bg-cyber-grid opacity-30"></div>
+                            
+                            <!-- Radar Pulse Ring -->
+                            <div class="w-32 h-32 rounded-full border border-cyan-500/40 animate-ping absolute"></div>
+                            
+                            <!-- Location Marker -->
+                            <div class="relative z-10 flex flex-col items-center">
+                                <i class="fa-solid fa-location-dot text-pink-500 text-3xl drop-shadow-[0_0_15px_rgba(255,46,147,0.8)] animate-bounce"></i>
+                                <div class="mt-2 px-3 py-1 bg-slate-900/90 border border-cyan-400/50 rounded-lg text-[11px] font-mono text-cyan-300 shadow-lg">
+                                    <span id="forensicGeo">Bucharest, Romania [44.4323° N, 26.1063° E]</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Explanatory Breakdown & Security Recommendations -->
+                    <div class="lg:col-span-5 glass-panel p-6 rounded-3xl space-y-5 flex flex-col justify-between">
+                        <div>
+                            <h4 class="font-bold text-white text-base flex items-center gap-2 border-b border-slate-800 pb-3 mb-4">
+                                <i class="fa-solid fa-list-check text-purple-400"></i> Suspicious Key Indicators
+                            </h4>
+
+                            <ul id="threatFactors" class="space-y-3 text-xs text-slate-300 font-mono">
+                                <!-- Dynamic List Items -->
+                            </ul>
+                        </div>
+
+                        <div class="bg-cyan-950/30 border border-cyan-500/30 p-4 rounded-2xl">
+                            <h5 class="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-1">Recommended Action:</h5>
+                            <p id="recommendedAction" class="text-xs text-slate-300">Do NOT click links. Block sender address immediately and flag to SecOps.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+
+        <!-- VIEW 5: SCAN HISTORY VIEW -->
+        <main id="view-history" class="hidden flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+            <div class="glass-panel p-6 rounded-3xl border border-slate-800">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i> Threat Audit & Scan Logs
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">Searchable archive of historical social engineering threat checks.</p>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500 text-xs"></i>
+                            <input type="text" id="historySearch" oninput="filterHistory()" placeholder="Search sender, IP or text..." class="pl-9 pr-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audit Log Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-xs font-mono text-cyan-300 uppercase tracking-wider">
+                                <th class="py-3 px-4">Timestamp</th>
+                                <th class="py-3 px-4">Sender / IP</th>
+                                <th class="py-3 px-4">Message Excerpt</th>
+                                <th class="py-3 px-4">Risk Level</th>
+                                <th class="py-3 px-4">Category</th>
+                                <th class="py-3 px-4 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="text-xs font-mono divide-y divide-slate-800/60 text-slate-300">
+                            <!-- Dynamically Populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="glass-panel border-t border-slate-800 py-4 mt-auto">
+            <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 font-mono">
+                AI-Based Social Engineering Attack Detection System • Powered by BERT Neural NLP
+            </div>
+        </footer>
+
+    </div>
+
+    <script>
+        // Global State & Mock Data
+        let currentUser = null;
+        let scanHistoryData = [
+            { id: 1, time: '2026-10-03 18:22', sender: 'alert@secure-bank-update.com', ip: '185.220.101.5', text: 'Urgent: Your account is suspended. Verify password now.', risk: 'HIGH', category: 'Banking Scam', confidence: '98.4%' },
+            { id: 2, time: '2026-10-03 16:45', sender: '+1 800-492-0199', ip: '103.21.244.0', text: 'Your OTP code is 849201 for login.', risk: 'LOW', category: 'Legitimate', confidence: '99.1%' },
+            { id: 3, time: '2026-10-02 21:10', sender: 'hr-payroll@company-update.net', ip: '194.26.29.112', text: 'Please review attached updated bonus compensation PDF.', risk: 'HIGH', category: 'Phishing Mail', confidence: '95.8%' },
+            { id: 4, time: '2026-10-01 11:05', sender: 'support@paypal-auth-verify.org', ip: '45.154.255.87', text: 'Unusual sign-in attempt detected in Moscow.', risk: 'MEDIUM', category: 'Impersonation', confidence: '84.2%' }
+        ];
+
+        // Sample Presets
+        const presets = {
+            phishing: "FROM: hr-update@corporate-security-verify.net\nSUBJECT: URGENT: Mandatory Password Reset Required\n\nDear Employee,\nOur system detected unauthorized access to your account. You must reset your passcode within 2 hours or your account will be permanently deactivated.\n\nClick here immediately: http://login-corporate-portal-update.com/verify",
+            bank: "FROM: +1 (888) 302-9481\nSMS: [HDFC ALERT] Your netbanking account has been locked due to suspicious activity. Update your KYC pan details now to avoid block: https://bit.ly/3x8K2ya",
+            legit: "Your Google Verification Security Code is 739201. Do not share this code with anyone."
+        };
+
+        // Canvas Particle Background
+        function initParticles() {
+            const canvas = document.getElementById('particleCanvas');
+            const ctx = canvas.getContext('2d');
+            let width = canvas.width = window.innerWidth;
+            let height = canvas.height = window.innerHeight;
+
+            window.addEventListener('resize', () => {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+            });
+
+            const particles = Array.from({ length: 45 }, () => ({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                vx: (Math.random() - 0.5) * 0.5,
+                vy: (Math.random() - 0.5) * 0.5,
+                size: Math.random() * 2 + 1,
+                alpha: Math.random() * 0.5 + 0.2
+            }));
+
+            function animate() {
+                ctx.clearRect(0, 0, width, height);
+                ctx.fillStyle = '#00F0FF';
+
+                particles.forEach((p, index) => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    if (p.x < 0) p.x = width;
+                    if (p.x > width) p.x = 0;
+                    if (p.y < 0) p.y = height;
+                    if (p.y > height) p.y = 0;
+
+                    ctx.globalAlpha = p.alpha;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Connect lines
+                    for (let j = index + 1; j < particles.length; j++) {
+                        const p2 = particles[j];
+                        const dx = p.x - p2.x;
+                        const dy = p.y - p2.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 120) {
+                            ctx.strokeStyle = '#00F0FF';
+                            ctx.globalAlpha = (1 - dist / 120) * 0.15;
+                            ctx.beginPath();
+                            ctx.moveTo(p.x, p.y);
+                            ctx.lineTo(p2.x, p2.y);
+                            ctx.stroke();
+                        }
+                    }
+                });
+
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // 3D Tilt Effect on Login Emblem Card
+        const tiltCard = document.getElementById('tiltCard');
+        if (tiltCard) {
+            tiltCard.addEventListener('mousemove', (e) => {
+                const rect = tiltCard.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                tiltCard.style.transform = `rotateY(${x / 8}deg) rotateX(${-y / 8}deg) scale(1.02)`;
+            });
+
+            tiltCard.addEventListener('mouseleave', () => {
+                tiltCard.style.transform = `rotateY(0deg) rotateX(0deg) scale(1)`;
+            });
+        }
+
+        // Toast Notification System
+        function showToast(title, message, type = 'success') {
+            const toast = document.getElementById('toastNotification');
+            const toastTitle = document.getElementById('toastTitle');
+            const toastMsg = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastTitle.innerText = title;
+            toastMsg.innerText = message;
+
+            if (type === 'success') {
+                toastIcon.className = 'fa-solid fa-circle-check text-emerald-400 text-xl';
+            } else if (type === 'error') {
+                toastIcon.className = 'fa-solid fa-circle-xmark text-pink-500 text-xl';
+            } else {
+                toastIcon.className = 'fa-solid fa-circle-info text-cyan-400 text-xl';
+            }
+
+            toast.classList.remove('hidden', 'translate-x-full');
+            setTimeout(closeToast, 4000);
+        }
+
+        function closeToast() {
+            document.getElementById('toastNotification').classList.add('translate-x-full');
+        }
+
+        // Authentication Handlers
+        function toggleAuthForm(mode) {
+            const loginForm = document.getElementById('loginForm');
+            const regForm = document.getElementById('registerForm');
+            const loginBtn = document.getElementById('tab-login-btn');
+            const regBtn = document.getElementById('tab-register-btn');
+
+            if (mode === 'login') {
+                loginForm.classList.remove('hidden');
+                regForm.classList.add('hidden');
+                loginBtn.className = 'text-lg font-bold text-cyan-400 border-b-2 border-cyan-400 pb-1 transition';
+                regBtn.className = 'text-lg font-bold text-slate-500 hover:text-slate-300 pb-1 transition';
+            } else {
+                regForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+                regBtn.className = 'text-lg font-bold text-cyan-400 border-b-2 border-cyan-400 pb-1 transition';
+                loginBtn.className = 'text-lg font-bold text-slate-500 hover:text-slate-300 pb-1 transition';
+            }
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const user = document.getElementById('loginUser').value;
+            currentUser = user;
+            document.getElementById('currentUserDisplay').innerText = user;
+
+            showToast('Authentication Success', 'Welcome back, Security Agent ' + user, 'success');
+            
+            document.getElementById('view-auth').classList.add('hidden');
+            document.getElementById('mainNav').classList.remove('hidden');
+            switchTab('dashboard');
+        }
+
+        function handleRegister(e) {
+            e.preventDefault();
+            const name = document.getElementById('regName').value;
+            showToast('Registration Complete', 'Agent profile created for ' + name, 'success');
+            toggleAuthForm('login');
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            document.getElementById('mainNav').classList.add('hidden');
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-analyze').classList.add('hidden');
+            document.getElementById('view-history').classList.add('hidden');
+            document.getElementById('view-auth').classList.remove('hidden');
+            showToast('Logged Out', 'Security session terminated.', 'info');
+        }
+
+        // Navigation Tab Switcher
+        function switchTab(tabId) {
+            const tabs = ['dashboard', 'analyze', 'history'];
+            tabs.forEach(tab => {
+                const view = document.getElementById(`view-${tab}`);
+                const btn = document.getElementById(`nav-${tab}`);
+                if (tab === tabId) {
+                    view.classList.remove('hidden');
+                    if (btn) {
+                        btn.className = 'nav-btn px-4 py-2 rounded-lg text-sm font-semibold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 flex items-center gap-2 transition';
+                    }
+                } else {
+                    view.classList.add('hidden');
+                    if (btn) {
+                        btn.className = 'nav-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/50 flex items-center gap-2 transition';
+                    }
+                }
+            });
+
+            if (tabId === 'history') {
+                renderHistoryTable();
+            }
+        }
+
+        // Preset Message Loader
+        function loadPreset(type) {
+            document.getElementById('messageInput').value = presets[type];
+            showToast('Preset Loaded', 'Sample text added into scanner buffer.', 'info');
+        }
+
+        // AI Real-Time Scan Simulation
+        function runAIScan() {
+            const text = document.getElementById('messageInput').value.trim();
+            if (!text) {
+                showToast('Input Required', 'Please paste or enter message text to analyze.', 'error');
+                return;
+            }
+
+            const progressBox = document.getElementById('scanProgressBox');
+            const progressBar = document.getElementById('scanProgressBar');
+            const stepText = document.getElementById('scanStepText');
+            const resultBox = document.getElementById('analysisResult');
+
+            resultBox.classList.add('hidden');
+            progressBox.classList.remove('hidden');
+
+            const steps = [
+                { p: 25, txt: "Step 1: Extracting Header Metadata & Domain Forensics..." },
+                { p: 55, txt: "Step 2: Running BERT Neural Linguistic Urgency Transformer..." },
+                { p: 85, txt: "Step 3: Querying Global Threat Intelligence Database..." },
+                { p: 100, txt: "Step 4: Finalizing Risk Vector & Geolocation Origin..." }
+            ];
+
+            let stepIdx = 0;
+            const interval = setInterval(() => {
+                if (stepIdx < steps.length) {
+                    progressBar.style.width = `${steps[stepIdx].p}%`;
+                    stepText.innerText = steps[stepIdx].txt;
+                    stepIdx++;
+                } else {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        progressBox.classList.add('hidden');
+                        displayScanResults(text);
+                    }, 400);
+                }
+            }, 600);
+        }
+
+        function displayScanResults(inputText) {
+            const resultBox = document.getElementById('analysisResult');
+            const lowerText = inputText.toLowerCase();
+
+            let isLegit = lowerText.includes('google verification') || lowerText.includes('code is 739201');
+
+            const banner = document.getElementById('resultBanner');
+            const iconBox = document.getElementById('resultIconBox');
+            const icon = document.getElementById('resultIcon');
+            const status = document.getElementById('resultStatus');
+            const category = document.getElementById('resultCategory');
+            const score = document.getElementById('resultScore');
+            const summary = document.getElementById('resultSummary');
+            const factors = document.getElementById('threatFactors');
+
+            if (isLegit) {
+                banner.className = 'p-6 rounded-3xl border border-emerald-500/40 bg-emerald-950/20 flex flex-col md:flex-row items-center justify-between gap-6';
+                iconBox.className = 'w-16 h-16 rounded-2xl flex items-center justify-center text-3xl bg-emerald-500/20 text-emerald-400';
+                icon.className = 'fa-solid fa-circle-check';
+                status.innerText = 'LOW RISK / LEGITIMATE';
+                category.className = 'px-3 py-1 rounded-full text-xs font-mono uppercase font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                category.innerText = 'Verified OTP';
+                score.className = 'text-4xl font-extrabold font-mono text-emerald-400';
+                score.innerText = '99.1%';
+                summary.innerText = 'Message contains standard operational syntax with zero suspicious links or phishing indicators.';
+
+                document.getElementById('forensicSender').innerText = 'Google Accounts Security';
+                document.getElementById('forensicIP').innerText = '142.250.190.46 (Verified Google LLC)';
+                document.getElementById('forensicPhone').innerText = 'Shortcode 22000';
+                document.getElementById('forensicAccuracy').innerText = '99.8% Precision';
+                document.getElementById('forensicGeo').innerText = 'Mountain View, California, USA';
+
+                factors.innerHTML = `
+                    <li class="flex items-center gap-2 text-emerald-400"><i class="fa-solid fa-check"></i> Standard Security Code Syntax</li>
+                    <li class="flex items-center gap-2 text-emerald-400"><i class="fa-solid fa-check"></i> No external hyperlinks detected</li>
+                    <li class="flex items-center gap-2 text-emerald-400"><i class="fa-solid fa-check"></i> Verified Sender Shortcode</li>
+                `;
+            } else {
+                banner.className = 'p-6 rounded-3xl border border-pink-500/40 bg-pink-950/20 flex flex-col md:flex-row items-center justify-between gap-6';
+                iconBox.className = 'w-16 h-16 rounded-2xl flex items-center justify-center text-3xl bg-pink-500/20 text-pink-400';
+                icon.className = 'fa-solid fa-triangle-exclamation';
+                status.innerText = 'CRITICAL ATTACK DETECTED';
+                category.className = 'px-3 py-1 rounded-full text-xs font-mono uppercase font-bold bg-pink-500/20 text-pink-400 border border-pink-500/30';
+                category.innerText = lowerText.includes('hdfc') || lowerText.includes('bank') ? 'Banking Scam' : 'Phishing Mail';
+                score.className = 'text-4xl font-extrabold font-mono text-pink-400';
+                score.innerText = '98.4%';
+                summary.innerText = 'High psychological pressure detected along with malicious credential harvesting URLs.';
+
+                document.getElementById('forensicSender').innerText = lowerText.includes('hdfc') ? 'HDFC Security Alert' : 'HR Corporate Portal';
+                document.getElementById('forensicIP').innerText = '185.220.101.5 (TOR Exit Proxy)';
+                document.getElementById('forensicPhone').innerText = '+1 (888) 302-9481';
+                document.getElementById('forensicAccuracy').innerText = '96.4% Precision';
+                document.getElementById('forensicGeo').innerText = 'Bucharest, Romania [44.4323° N, 26.1063° E]';
+
+                factors.innerHTML = `
+                    <li class="flex items-center gap-2 text-pink-400"><i class="fa-solid fa-xmark"></i> High NLP Urgency & Account Lock Threat</li>
+                    <li class="flex items-center gap-2 text-pink-400"><i class="fa-solid fa-xmark"></i> Unregistered Lookalike Link Domain</li>
+                    <li class="flex items-center gap-2 text-pink-400"><i class="fa-solid fa-xmark"></i> Mismatched SPF/DKIM Mail Headers</li>
+                `;
+
+                // Add to Scan History
+                scanHistoryData.unshift({
+                    id: Date.now(),
+                    time: new Date().toISOString().slice(0, 16).replace('T', ' '),
+                    sender: document.getElementById('forensicSender').innerText,
+                    ip: '185.220.101.5',
+                    text: inputText.slice(0, 45) + '...',
+                    risk: 'HIGH',
+                    category: category.innerText,
+                    confidence: '98.4%'
+                });
+            }
+
+            resultBox.classList.remove('hidden');
+            resultBox.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // History Table Rendering & Filtering
+        function renderHistoryTable(data = scanHistoryData) {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/40 transition';
+
+                const riskBadge = item.risk === 'HIGH' 
+                    ? '<span class="px-2 py-0.5 rounded text-[10px] bg-pink-500/20 text-pink-400 border border-pink-500/30 font-bold">HIGH RISK</span>'
+                    : '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">SAFE</span>';
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 text-slate-400">${item.time}</td>
+                    <td class="py-3 px-4 font-bold text-cyan-300">${item.sender}<br><span class="text-[10px] text-slate-500 font-normal">${item.ip}</span></td>
+                    <td class="py-3 px-4 text-slate-300 max-w-xs truncate">${item.text}</td>
+                    <td class="py-3 px-4">${riskBadge}</td>
+                    <td class="py-3 px-4 text-slate-300">${item.category}</td>
+                    <td class="py-3 px-4 text-right">
+                        <button onclick="showToast('Log Detail', 'Ref ID: #${item.id} - Confidence: ${item.confidence}', 'info')" class="text-cyan-400 hover:text-cyan-300">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterHistory() {
+            const query = document.getElementById('historySearch').value.toLowerCase();
+            const filtered = scanHistoryData.filter(item => 
+                item.sender.toLowerCase().includes(query) ||
+                item.text.toLowerCase().includes(query) ||
+                item.ip.toLowerCase().includes(query)
+            );
+            renderHistoryTable(filtered);
+        }
+
+        // Initialize on Window Load
+        window.onload = function() {
+            initParticles();
+            renderHistoryTable();
+        };
+    </script>
+</body>
+</html>
